@@ -1,0 +1,587 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    LineChart, Line, Cell
+} from 'recharts';
+import {
+    ArrowLeft, Upload, Filter, DollarSign, MessageSquare,
+    Users, ChevronRight, Calendar, LayoutDashboard,
+    ChevronLeft, AlertCircle
+} from 'lucide-react';
+
+// --- Types ---
+type FeedbackItem = {
+    Date: string;
+    "Supplier Name": string;
+    Label: string;
+    "Sub Label": string;
+    "Micro Label": string;
+    Price: number;
+    Message: string;
+};
+
+// --- Embedded Initial Data (Top 150 Recent Items) ---
+const INITIAL_DATA: FeedbackItem[] = [
+    { "Date": "2025-11-07", "Supplier Name": "Longman's Cheese", "Label": "Picking & Warehouse", "Sub Label": "Picking Slips", "Micro Label": "Customer code", "Price": 0.0, "Message": "They are really keen to have the customer codes added to the invoices, so when a customer rings them for a query they can ask for the code to locate the account and save any potential issues." },
+    { "Date": "2025-11-07", "Supplier Name": "First Choice", "Label": "Uncategorized", "Sub Label": "Uncategorized", "Micro Label": "Uncategorized", "Price": 0.0, "Message": "Supplier: First Choice\nType: Goods In Process\nPriority: Medium\nComment:" },
+    { "Date": "2025-11-07", "Supplier Name": "Imran Brothers", "Label": "Pricing", "Sub Label": "Price History", "Micro Label": "Per_customer history", "Price": 0.0, "Message": "Would like to see 'sold price' history per product per customer on the order entry page - last sold price and date last purchased. Saw something similar to this on Sage and believes it would support their telesales team whilst taking and confirming orders." },
+    { "Date": "2025-11-06", "Supplier Name": "Parisi", "Label": "Logistics (Delivery & Runs)", "Sub Label": "Delivery Runs", "Micro Label": "Multiple runs per customer", "Price": 2590.0, "Message": "Parisi needs to have multiple log ins for each venue departments - for eg. Rockpool need to have a Parisi log in for Bar, Juice and F+V." },
+    { "Date": "2025-11-06", "Supplier Name": "Box Fresh", "Label": "Buying (Procurement)", "Sub Label": "Purchase Orders", "Micro Label": "Partial orders", "Price": 0.0, "Message": "Box Fresh essentially have two groups of products, 'Rebel Group Products' and 'Non Rebel Group Products'." },
+    { "Date": "2025-11-06", "Supplier Name": "Sher Wagyu", "Label": "Picking & Warehouse", "Sub Label": "Picking Slips", "Micro Label": "Customer code", "Price": 0.0, "Message": "Would like the Product Code visible when picking as per the screenshot below" }
+];
+
+
+// --- Helper Components ---
+
+const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>
+        {children}
+    </div>
+);
+
+const StatCard = ({ title, value, icon: Icon, subValue }: any) => (
+    <Card className="p-6 flex items-start justify-between">
+        <div>
+            <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+            <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
+            {subValue && <p className="text-xs text-slate-400 mt-1">{subValue}</p>}
+        </div>
+        <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
+            <Icon size={20} />
+        </div>
+    </Card>
+);
+
+// --- Main Application ---
+
+export default function Dashboard() {
+    const [data, setData] = useState<FeedbackItem[]>(INITIAL_DATA);
+    const [filteredData, setFilteredData] = useState<FeedbackItem[]>(INITIAL_DATA);
+    const [isDemoMode, setIsDemoMode] = useState(true);
+
+    // Navigation State
+    // activeTab controls the high-level view: 'themes' (default labels) or 'suppliers' (list of suppliers)
+    const [activeTab, setActiveTab] = useState<'themes' | 'suppliers'>('themes');
+
+    // Drill down levels for Themes
+    const [viewLevel, setViewLevel] = useState<'root' | 'label' | 'sublabel'>('root');
+
+    const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+    const [selectedSubLabel, setSelectedSubLabel] = useState<string | null>(null);
+    const [selectedSupplier, setSelectedSupplier] = useState<string>('All');
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 20;
+
+    // Load CSV Functionality
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result as string;
+            const lines = text.split('\n');
+
+            if (lines.length < 2) return;
+
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const parsedData: FeedbackItem[] = [];
+
+            const parseCSVLine = (str: string) => {
+                const result = [];
+                let cell = '';
+                let inQuote = false;
+
+                for (let i = 0; i < str.length; i++) {
+                    const char = str[i];
+                    if (char === '"') {
+                        inQuote = !inQuote;
+                    } else if (char === ',' && !inQuote) {
+                        result.push(cell);
+                        cell = '';
+                    } else {
+                        cell += char;
+                    }
+                }
+                result.push(cell);
+                return result.map(c => c.replace(/^"|"$/g, '').trim());
+            };
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const cleanRow = parseCSVLine(lines[i]);
+
+                const getCol = (possibleNames: string[]) => {
+                    for (const name of possibleNames) {
+                        const idx = headers.indexOf(name);
+                        if (idx !== -1 && cleanRow[idx]) return cleanRow[idx];
+                    }
+                    return "";
+                };
+
+                // Date Handling
+                let rawDate = getCol(['Date', 'Date (UTC)']);
+                if (rawDate.includes('T')) rawDate = rawDate.split('T')[0];
+                if (rawDate.includes(' ')) rawDate = rawDate.split(' ')[0];
+
+                // Flexible Column Mapping for different CSV versions
+                const item: FeedbackItem = {
+                    Date: rawDate,
+                    "Supplier Name": getCol(['Supplier Name', 'Supplier Name (filled)', 'Report Company (matched)']) || "Unknown",
+                    Label: getCol(['Label']) || "Uncategorized",
+                    "Sub Label": getCol(['Sub Label']) || "Uncategorized",
+                    "Micro Label": getCol(['Micro Label']) || "Uncategorized",
+                    Price: parseFloat(getCol(['Price', 'Subscription Amount (converted) AUD sum (matched)']) || "0"),
+                    Message: getCol(['Message']) || ""
+                };
+
+                parsedData.push(item);
+            }
+
+            if (parsedData.length > 0) {
+                setData(parsedData);
+                setIsDemoMode(false);
+                // Reset View
+                setActiveTab('themes');
+                setViewLevel('root');
+                setSelectedLabel(null);
+                setSelectedSubLabel(null);
+                setSelectedSupplier('All');
+                setCurrentPage(1);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    // --- Filter Logic ---
+    useEffect(() => {
+        let res = data;
+
+        // Supplier Filter
+        if (selectedSupplier !== 'All') {
+            res = res.filter(item => item["Supplier Name"] === selectedSupplier);
+        }
+
+        // Drill Down Filters (only apply if we are in themes mode)
+        if (activeTab === 'themes') {
+            if (viewLevel === 'label' && selectedLabel) {
+                res = res.filter(item => item.Label === selectedLabel);
+            } else if (viewLevel === 'sublabel' && selectedLabel && selectedSubLabel) {
+                res = res.filter(item =>
+                    item.Label === selectedLabel &&
+                    item["Sub Label"] === selectedSubLabel
+                );
+            }
+        }
+
+        setFilteredData(res);
+        setCurrentPage(1);
+    }, [data, selectedSupplier, viewLevel, selectedLabel, selectedSubLabel, activeTab]);
+
+    // --- Aggregations ---
+
+    const kpiStats = useMemo(() => {
+        return {
+            count: filteredData.length,
+            revenue: filteredData.reduce((acc, curr) => acc + (curr.Price || 0), 0),
+            suppliers: new Set(filteredData.map(d => d["Supplier Name"])).size
+        };
+    }, [filteredData]);
+
+    const chartData = useMemo(() => {
+        if (activeTab === 'suppliers') {
+            // Top Suppliers by Count
+            const counts: Record<string, number> = {};
+            filteredData.forEach(d => {
+                const name = d["Supplier Name"] || "Unknown";
+                counts[name] = (counts[name] || 0) + 1;
+            });
+            return Object.entries(counts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 15); // Top 15 Suppliers
+        }
+
+        // Default: Themes Mode
+        if (viewLevel === 'root') {
+            const counts: Record<string, number> = {};
+            filteredData.forEach(d => {
+                counts[d.Label] = (counts[d.Label] || 0) + 1;
+            });
+            return Object.entries(counts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 10);
+        }
+        else if (viewLevel === 'label') {
+            const counts: Record<string, number> = {};
+            filteredData.forEach(d => {
+                counts[d["Sub Label"]] = (counts[d["Sub Label"]] || 0) + 1;
+            });
+            return Object.entries(counts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 10);
+        }
+        return [];
+    }, [filteredData, viewLevel, activeTab]);
+
+    const timelineData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredData.forEach(d => {
+            if (!d.Date) return;
+            counts[d.Date] = (counts[d.Date] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([date, count]) => ({ date, count }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [filteredData]);
+
+    const uniqueSuppliers = useMemo(() => {
+        return Array.from(new Set(data.map(d => d["Supplier Name"]))).sort();
+    }, [data]);
+
+    // --- Pagination ---
+    const paginatedData = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredData.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredData, currentPage]);
+
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+    // --- Handlers ---
+    const handleBarClick = (entry: any) => {
+        if (activeTab === 'suppliers') {
+            // DRILL DOWN BY SUPPLIER:
+            // Clicking a supplier bar sets the filter to that supplier and switches to Themes view
+            setSelectedSupplier(entry.name);
+            setActiveTab('themes');
+            setViewLevel('root'); // Start at root themes for this supplier
+        } else {
+            // Normal Theme Drilldown
+            if (viewLevel === 'root') {
+                setSelectedLabel(entry.name);
+                setViewLevel('label');
+            } else if (viewLevel === 'label') {
+                setSelectedSubLabel(entry.name);
+                setViewLevel('sublabel');
+            }
+        }
+    };
+
+    const handleBack = () => {
+        if (viewLevel === 'sublabel') {
+            setSelectedSubLabel(null);
+            setViewLevel('label');
+        } else if (viewLevel === 'label') {
+            setSelectedLabel(null);
+            setViewLevel('root');
+        }
+    };
+
+    const COLORS = ['#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4', '#14b8a6', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
+
+    return (
+        <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-6">
+
+            {/* Header */}
+            <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+                        <LayoutDashboard className="text-indigo-600" />
+                        Feedback Intelligence
+                    </h1>
+                    <p className="text-slate-500 mt-1">
+                        Analyze customer feedback trends and revenue impact.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+                        <Upload size={16} className="text-white" />
+                        <span className="text-sm font-medium">Load Full CSV</span>
+                        <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                    </label>
+                </div>
+            </header>
+
+            {/* Demo Warning */}
+            {isDemoMode && (
+                <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 text-amber-800">
+                    <AlertCircle size={20} />
+                    <p className="text-sm">
+                        <strong>Demo Mode:</strong> Displaying sample data. Upload your <code>.csv</code> file to see real results.
+                    </p>
+                </div>
+            )}
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <StatCard
+                    title="Total Feedback Items"
+                    value={kpiStats.count.toLocaleString()}
+                    icon={MessageSquare}
+                    subValue={activeTab === 'suppliers' ? 'Top Suppliers View' : (viewLevel !== 'root' ? 'Filtered View' : 'All Data')}
+                />
+                <StatCard
+                    title="Linked Revenue Risk"
+                    value={`$${kpiStats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                    icon={DollarSign}
+                    subValue="Annual Subscription Value"
+                />
+                <StatCard
+                    title="Active Suppliers"
+                    value={kpiStats.suppliers}
+                    icon={Users}
+                    subValue="Participating Companies"
+                />
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:col-span-12 gap-6">
+
+                {/* Sidebar / Filters */}
+                <div className="lg:col-span-3 space-y-6">
+                    <Card className="p-5">
+                        <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                            <Filter size={18} /> Filters
+                        </h3>
+
+                        <div className="space-y-4">
+                            {/* Supplier Filter */}
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+                                    Supplier
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-2 px-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                        value={selectedSupplier}
+                                        onChange={(e) => setSelectedSupplier(e.target.value)}
+                                    >
+                                        <option value="All">All Suppliers ({uniqueSuppliers.length})</option>
+                                        {uniqueSuppliers.map((s, i) => (
+                                            <option key={`${s}-${i}`} value={s}>{s}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* View Toggles */}
+                            <div className="pt-4 border-t border-slate-100">
+                                <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+                                    View Mode
+                                </label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => { setActiveTab('themes'); setViewLevel('root'); }}
+                                        className={`px-3 py-2 text-sm rounded-lg font-medium transition ${activeTab === 'themes' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                    >
+                                        By Theme
+                                    </button>
+                                    <button
+                                        onClick={() => { setActiveTab('suppliers'); setSelectedSupplier('All'); }}
+                                        className={`px-3 py-2 text-sm rounded-lg font-medium transition ${activeTab === 'suppliers' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                    >
+                                        By Supplier
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Breadcrumb Navigation Status */}
+                            {activeTab === 'themes' && (
+                                <div className="pt-4 border-t border-slate-100">
+                                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+                                        Drill Down Level
+                                    </label>
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            onClick={() => { setViewLevel('root'); setSelectedLabel(null); setSelectedSubLabel(null); }}
+                                            className={`text-left px-3 py-2 rounded text-sm transition ${viewLevel === 'root' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            Top Categories
+                                        </button>
+
+                                        {selectedLabel && (
+                                            <button
+                                                onClick={() => { setViewLevel('label'); setSelectedSubLabel(null); }}
+                                                className={`text-left px-3 py-2 rounded text-sm flex items-center gap-2 transition ${viewLevel === 'label' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                <ChevronRight size={14} />
+                                                {selectedLabel}
+                                            </button>
+                                        )}
+
+                                        {selectedSubLabel && (
+                                            <div className="text-left px-3 py-2 rounded text-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 font-medium">
+                                                <ChevronRight size={14} />
+                                                {selectedSubLabel}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+                </div>
+
+                {/* Main Charts Area */}
+                <div className="lg:col-span-9 space-y-6">
+
+                    {/* Main Bar Chart */}
+                    <Card className="p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                {/* Back Button for Themes */}
+                                {activeTab === 'themes' && viewLevel !== 'root' && (
+                                    <button
+                                        onClick={handleBack}
+                                        className="p-1.5 hover:bg-slate-100 rounded-full transition text-slate-500"
+                                    >
+                                        <ArrowLeft size={20} />
+                                    </button>
+                                )}
+
+                                {/* Title */}
+                                <h2 className="text-lg font-bold text-slate-900">
+                                    {activeTab === 'suppliers' && "Top Suppliers by Feedback Volume"}
+                                    {activeTab === 'themes' && viewLevel === 'root' && "Top Feedback Themes"}
+                                    {activeTab === 'themes' && viewLevel === 'label' && `Breakdown: ${selectedLabel}`}
+                                    {activeTab === 'themes' && viewLevel === 'sublabel' && `Details: ${selectedSubLabel}`}
+                                </h2>
+                            </div>
+
+                            {viewLevel !== 'sublabel' && (
+                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">
+                                    {activeTab === 'suppliers' ? "Click Supplier to See Categories" : "Click bars to drill down"}
+                                </span>
+                            )}
+                        </div>
+
+                        {viewLevel !== 'sublabel' ? (
+                            <div className="h-[400px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                                        <XAxis type="number" hide />
+                                        <YAxis
+                                            type="category"
+                                            dataKey="name"
+                                            width={180}
+                                            tick={{ fill: '#475569', fontSize: 11 }}
+                                            interval={0}
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: '#f1f5f9' }}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Bar dataKey="count" radius={[0, 4, 4, 0]} onClick={handleBarClick} cursor="pointer">
+                                            {chartData.map((_entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        ) : (
+                            // Detailed List View with Pagination
+                            <div className="h-[400px] flex flex-col">
+                                <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                                    {paginatedData.map((item, idx) => (
+                                        <div key={idx} className="p-4 border border-slate-100 rounded-lg bg-slate-50 hover:bg-white hover:shadow-sm transition group">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-slate-700 text-sm">{item["Supplier Name"]}</span>
+                                                    {item.Price > 0 && (
+                                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium flex items-center">
+                                                            <DollarSign size={10} /> Value
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-slate-400">{item.Date}</span>
+                                            </div>
+                                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{item.Message}</p>
+                                            <div className="mt-3 pt-2 border-t border-slate-200/50 flex gap-2">
+                                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium bg-slate-100 px-2 py-1 rounded">
+                                                    {item["Micro Label"]}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {paginatedData.length === 0 && (
+                                        <div className="text-center py-12 text-slate-400">
+                                            No feedback items found for this selection.
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Pagination Controls */}
+                                {totalPages > 1 && (
+                                    <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+                                        >
+                                            <ChevronLeft size={20} />
+                                        </button>
+                                        <span className="text-xs font-medium text-slate-500">
+                                            Page {currentPage} of {totalPages}
+                                        </span>
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+                                        >
+                                            <ChevronRight size={20} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* Timeline Chart */}
+                    <Card className="p-6">
+                        <div className="flex items-center gap-2 mb-6">
+                            <Calendar size={18} className="text-slate-400" />
+                            <h2 className="text-lg font-bold text-slate-900">Volume Over Time</h2>
+                        </div>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={timelineData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <XAxis
+                                        dataKey="date"
+                                        tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        minTickGap={40}
+                                    />
+                                    <YAxis
+                                        tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="count"
+                                        stroke="#6366f1"
+                                        strokeWidth={3}
+                                        dot={false}
+                                        activeDot={{ r: 6 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+        </div>
+    );
+}
