@@ -111,7 +111,26 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
             if (!text) return;
 
             const lines = text.split('\n');
-            // Skip header (index 0)
+            if (lines.length < 2) return;
+
+            // Parse Headers
+            const headerLine = lines[0];
+            const headers = headerLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+            // Helper to find column index by name (case-insensitive, flexible)
+            const getColIdx = (possibleNames: string[]) => {
+                const lowerNames = possibleNames.map(n => n.toLowerCase());
+                return headers.findIndex(h => lowerNames.includes(h.toLowerCase()));
+            };
+
+            const idxDate = getColIdx(['Date', 'Date (UTC)']);
+            const idxSupplier = getColIdx(['Supplier Name', 'Supplier Name (filled)', 'Report Company (matched)', 'Supplier']);
+            const idxLabel = getColIdx(['Label', 'Theme', 'Category']);
+            const idxSubLabel = getColIdx(['Sub Label', 'Sub-Theme']);
+            const idxMicroLabel = getColIdx(['Micro Label', 'Micro-Theme']);
+            const idxPrice = getColIdx(['Price', 'Subscription Amount (converted) AUD sum (matched)', 'Value']);
+            const idxMessage = getColIdx(['Message', 'Feedback', 'Verbatim']);
+
             const parsedData: FeedbackItem[] = [];
 
             const parseCSVLine = (str: string) => {
@@ -139,16 +158,22 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                 if (!line) continue;
 
                 const cols = parseCSVLine(line);
-                if (cols.length < 5) continue;
+
+                // Helper to safely get value at index
+                const val = (idx: number) => (idx !== -1 && cols[idx]) ? cols[idx] : "";
+
+                // Date parsing fix
+                let rawDate = val(idxDate);
+                if (rawDate.includes('T')) rawDate = rawDate.split('T')[0];
 
                 parsedData.push({
-                    "Date": cols[0] || "",
-                    "Supplier Name": cols[1] || "",
-                    "Label": cols[2] || "",
-                    "Sub Label": cols[3] || "",
-                    "Micro Label": cols[4] || "",
-                    "Price": parseFloat(cols[5] || "0"),
-                    "Message": cols[6] || ""
+                    "Date": rawDate,
+                    "Supplier Name": val(idxSupplier) || "Unknown",
+                    "Label": val(idxLabel) || "Uncategorized",
+                    "Sub Label": val(idxSubLabel) || "Uncategorized",
+                    "Micro Label": val(idxMicroLabel) || "Uncategorized",
+                    "Price": parseFloat(val(idxPrice) || "0"),
+                    "Message": val(idxMessage) || ""
                 });
             }
 
