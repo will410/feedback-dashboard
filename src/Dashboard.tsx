@@ -558,7 +558,7 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                         />
                                         <Bar dataKey="count" radius={[0, 4, 4, 0]} onClick={handleBarClick} cursor="pointer">
                                             {chartData.map((_entry, index) => (
-                                                <Cell key={`cell - ${index} `} fill={COLORS[index % COLORS.length]} />
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Bar>
                                     </BarChart>
@@ -609,88 +609,86 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                                     </p>
                                                 </div>
                                             </div>
-                                    ))}
-                                            {paginatedData.length === 0 && (
-                                                <div className="text-center py-12 text-slate-400">
-                                                    No feedback items found for this selection.
-                                                </div>
-                                            )}
                                         </div>
-
-                                {/* Pagination Controls */ }
-                                { totalPages > 1 && (
-                                            <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
-                                                <button
-                                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                                    disabled={currentPage === 1}
-                                                    className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
-                                                >
-                                                    <ChevronLeft size={20} />
-                                                </button>
-                                                <span className="text-xs font-medium text-slate-500">
-                                                    Page {currentPage} of {totalPages}
-                                                </span>
-                                                <button
-                                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                                    disabled={currentPage === totalPages}
-                                                    className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
-                                                >
-                                                    <ChevronRight size={20} />
-                                                </button>
-                                            </div>
-                                        )}
+                                    ))}
+                                    {paginatedData.length === 0 && (
+                                        <div className="text-center py-12 text-slate-400">
+                                            No feedback items found for this selection.
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* Pagination Controls */}
+                                {totalPages > 1 && (
+                                    <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+                                        >
+                                            <ChevronLeft size={20} />
+                                        </button>
+                                        <span className="text-xs font-medium text-slate-500">
+                                            Page {currentPage} of {totalPages}
+                                        </span>
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+                                        >
+                                            <ChevronRight size={20} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         )}
-                            </Card>
+                    </Card>
 
                     {/* Timeline Chart */}
-                        <Card className="p-6">
-                            <div className="flex items-center gap-2 mb-6">
-                                <Calendar size={18} className="text-slate-400" />
-                                <h2 className="text-lg font-bold text-slate-900">Volume Over Time</h2>
-                            </div>
-                            <div className="h-[250px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={timelineData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                        <XAxis
-                                            dataKey="date"
-                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            minTickGap={40}
-                                            tickFormatter={(val) => {
-                                                // Format YYYY-MM to "Nov 25"
-                                                const [y, m] = val.split('-');
-                                                const date = new Date(parseInt(y), parseInt(m) - 1);
-                                                return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-                                            }}
-                                        />
-                                        <YAxis
-                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="count"
-                                            stroke="#6366f1"
-                                            strokeWidth={3}
-                                            dot={false}
-                                            activeDot={{ r: 6 }}
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </Card>
+                    <Card className="p-6">
+                        <div className="flex items-center gap-2 mb-6">
+                            <Calendar size={18} className="text-slate-400" />
+                            <h2 className="text-lg font-bold text-slate-900">Volume Over Time</h2>
+                        </div>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={timelineData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <XAxis
+                                        dataKey="date"
+                                        tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        minTickGap={40}
+                                        tickFormatter={(val) => {
+                                            // Format YYYY-MM to "Nov 25"
+                                            const [y, m] = val.split('-');
+                                            const date = new Date(parseInt(y), parseInt(m) - 1);
+                                            return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                                        }}
+                                    />
+                                    <YAxis
+                                        tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="count"
+                                        stroke="#6366f1"
+                                        strokeWidth={3}
+                                        dot={false}
+                                        activeDot={{ r: 6 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
                 </div>
             </div>
         </div>
-        </div >
-    );
-}
     );
 }
