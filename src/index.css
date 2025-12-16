@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 * {
   margin: 0;
   padding: 0;
@@ -10,6 +14,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc;
+  color: #1e293b;
 }
 
 code {
@@ -19,4 +25,195 @@ code {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.9em;
+}
+
+/* Main container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1,
+h2,
+h3 {
+  margin-bottom: 16px;
+}
+
+/* Typography improvements */
+h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+p,
+span {
+  line-height: 1.5;
+}
+
+/* Main layout */
+main {
+  padding: 24px;
+}
+
+/* Header section */
+header {
+  margin-bottom: 24px;
+}
+
+header p {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+button {
+  padding: 8px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button:hover {
+  background-color: #f1f5f9;
+}
+
+input[type="file"] {
+  padding: 8px;
+}
+
+select {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+/* File upload styling */
+.file-upload-section {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Demo mode banner */
+.demo-banner {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #78350f;
+}
+
+/* Metrics section */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.metric-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+/* Filters */
+.filters {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 20px 0;
+  border: 1px solid #e2e8f0;
+}
+
+.filter-group {
+  margin-bottom: 16px;
+}
+
+.filter-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* Charts/content */
+.chart-container {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 20px 0;
+  border: 1px solid #e2e8f0;
+}
+
+/* View mode buttons */
+.view-mode-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.view-mode-buttons button {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.view-mode-buttons button.active {
+  background: #0f172a;
+  color: white;
+  border-color: #0f172a;
+}
+
+/* Section spacing */
+section {
+  margin-bottom: 32px;
+}
+
+section h2 {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* Drill down and other buttons */
+.drill-down-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.drill-down-buttons button {
+  padding: 6px 12px;
+  font-size: 13px;
 }

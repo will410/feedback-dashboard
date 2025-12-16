@@ -281,7 +281,7 @@ export default function Dashboard() {
         }
     };
 
-    const COLORS = ['#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4', '#14b8a6', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
+    const COLORS = ['#8b5cf6', '#d946ef', '#f43f5e', '#ec4899', '#8b5cf6', '#6366f1', '#a855f7', '#fb7185', '#e879f9', '#22c55e', '#06b6d4', '#14b8a6', '#f59e0b', '#ef4444', '#3b82f6'];
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-6">
@@ -343,7 +343,8 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:col-span-12 gap-6">
 
                 {/* Sidebar / Filters */}
-                <div className="lg:col-span-3 space-y-6">
+                <div className="lg:col-span-3 space-y-4">
+                    {/* Filters Card */}
                     <Card className="p-5">
                         <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
                             <Filter size={18} /> Filters
@@ -357,7 +358,7 @@ export default function Dashboard() {
                                 </label>
                                 <div className="relative">
                                     <select
-                                        className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-2 px-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                        className="w-full appearance-none bg-white border border-slate-200 text-slate-700 py-2.5 px-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                                         value={selectedSupplier}
                                         onChange={(e) => setSelectedSupplier(e.target.value)}
                                     >
@@ -369,45 +370,24 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            {/* View Toggles */}
-                            <div className="pt-4 border-t border-slate-100">
-                                <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
-                                    View Mode
-                                </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        onClick={() => { setActiveTab('themes'); setViewLevel('root'); }}
-                                        className={`px-3 py-2 text-sm rounded-lg font-medium transition ${activeTab === 'themes' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                                    >
-                                        By Theme
-                                    </button>
-                                    <button
-                                        onClick={() => { setActiveTab('suppliers'); setSelectedSupplier('All'); }}
-                                        className={`px-3 py-2 text-sm rounded-lg font-medium transition ${activeTab === 'suppliers' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                                    >
-                                        By Supplier
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Breadcrumb Navigation Status */}
+                            {/* Current View Section */}
                             {activeTab === 'themes' && (
                                 <div className="pt-4 border-t border-slate-100">
                                     <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
-                                        Drill Down Level
+                                        Current View
                                     </label>
                                     <div className="flex flex-col gap-2">
                                         <button
                                             onClick={() => { setViewLevel('root'); setSelectedLabel(null); setSelectedSubLabel(null); }}
-                                            className={`text-left px-3 py-2 rounded text-sm transition ${viewLevel === 'root' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            className={`text-left px-3 py-2.5 rounded-lg text-sm transition ${viewLevel === 'root' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
                                         >
-                                            Top Categories
+                                            All Categories
                                         </button>
 
                                         {selectedLabel && (
                                             <button
                                                 onClick={() => { setViewLevel('label'); setSelectedSubLabel(null); }}
-                                                className={`text-left px-3 py-2 rounded text-sm flex items-center gap-2 transition ${viewLevel === 'label' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                className={`text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 transition ${viewLevel === 'label' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
                                             >
                                                 <ChevronRight size={14} />
                                                 {selectedLabel}
@@ -415,7 +395,7 @@ export default function Dashboard() {
                                         )}
 
                                         {selectedSubLabel && (
-                                            <div className="text-left px-3 py-2 rounded text-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 font-medium">
+                                            <div className="text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 font-medium">
                                                 <ChevronRight size={14} />
                                                 {selectedSubLabel}
                                             </div>
@@ -424,6 +404,14 @@ export default function Dashboard() {
                                 </div>
                             )}
                         </div>
+                    </Card>
+
+                    {/* Analysis Tip Card */}
+                    <Card className="p-5 !bg-slate-900 !border-slate-800">
+                        <h3 className="font-semibold text-white mb-2">Analysis Tip</h3>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                            Drill down into categories to isolate specific issues. Use the Supplier filter to see feedback from a single key account.
+                        </p>
                     </Card>
                 </div>
 
@@ -440,23 +428,28 @@ export default function Dashboard() {
                                         onClick={handleBack}
                                         className="p-1.5 hover:bg-slate-100 rounded-full transition text-slate-500"
                                     >
-                                        <ArrowLeft size={20} />
+                                        <ArrowLeft size={18} />
                                     </button>
                                 )}
 
-                                {/* Title */}
-                                <h2 className="text-lg font-bold text-slate-900">
-                                    {activeTab === 'suppliers' && "Top Suppliers by Feedback Volume"}
-                                    {activeTab === 'themes' && viewLevel === 'root' && "Top Feedback Themes"}
-                                    {activeTab === 'themes' && viewLevel === 'label' && `Breakdown: ${selectedLabel}`}
-                                    {activeTab === 'themes' && viewLevel === 'sublabel' && `Details: ${selectedSubLabel}`}
-                                </h2>
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900">
+                                        {activeTab === 'suppliers' && "Top Suppliers"}
+                                        {activeTab === 'themes' && viewLevel === 'root' && "Top Themes"}
+                                        {activeTab === 'themes' && viewLevel === 'label' && selectedLabel}
+                                        {activeTab === 'themes' && viewLevel === 'sublabel' && selectedSubLabel}
+                                    </h2>
+                                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                        {activeTab === 'suppliers' ? "By Volume" : "By Feedback Count"}
+                                    </p>
+                                </div>
                             </div>
 
                             {viewLevel !== 'sublabel' && (
-                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">
-                                    {activeTab === 'suppliers' ? "Click Supplier to See Categories" : "Click bars to drill down"}
-                                </span>
+                                <div className="flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-md font-medium">
+                                    <LayoutDashboard size={14} />
+                                    {activeTab === 'suppliers' ? "Select a supplier" : "Click bar to drill down"}
+                                </div>
                             )}
                         </div>
 
