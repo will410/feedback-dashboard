@@ -4,9 +4,9 @@ import {
     LineChart, Line, Cell
 } from 'recharts';
 import {
-    ArrowLeft, Upload, Filter, DollarSign, MessageSquare,
+    ArrowLeft, Filter, DollarSign, MessageSquare,
     Users, ChevronRight, Calendar, LayoutDashboard,
-    ChevronLeft, AlertCircle, LogOut
+    ChevronLeft, AlertCircle, LogOut, Download
 } from 'lucide-react';
 
 // --- Types ---
@@ -34,7 +34,7 @@ const INITIAL_DATA: FeedbackItem[] = [
 // --- Helper Components ---
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-    <div className={`bg - white rounded - xl border border - slate - 200 shadow - sm ${className} `}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>
         {children}
     </div>
 );
@@ -54,7 +54,11 @@ const StatCard = ({ title, value, icon: Icon, subValue }: any) => (
 
 // --- Main Application ---
 
-export default function Dashboard() {
+interface DashboardProps {
+    onLogout?: () => void;
+}
+
+export default function Dashboard({ onLogout }: DashboardProps) {
     const [data, setData] = useState<FeedbackItem[]>(INITIAL_DATA);
     const [filteredData, setFilteredData] = useState<FeedbackItem[]>(INITIAL_DATA);
     const [isDemoMode, setIsDemoMode] = useState(true);
