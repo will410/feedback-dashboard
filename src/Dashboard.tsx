@@ -6,7 +6,7 @@ import {
 import {
     ArrowLeft, Upload, Filter, DollarSign, MessageSquare,
     Users, ChevronRight, Calendar, LayoutDashboard,
-    ChevronLeft, AlertCircle
+    ChevronLeft, AlertCircle, LogOut
 } from 'lucide-react';
 
 // --- Types ---
@@ -34,7 +34,7 @@ const INITIAL_DATA: FeedbackItem[] = [
 // --- Helper Components ---
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>
+    <div className={`bg - white rounded - xl border border - slate - 200 shadow - sm ${className} `}>
         {children}
     </div>
 );
@@ -299,10 +299,19 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
-                        <Upload size={16} className="text-white" />
-                        <span className="text-sm font-medium">Load Full CSV</span>
-                        <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                    {onLogout && (
+                        <button
+                            onClick={onLogout}
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+                        >
+                            <LogOut size={16} />
+                            Logout
+                        </button>
+                    )}
+                    <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors shadow-sm font-medium text-sm">
+                        <Download size={16} />
+                        Load Full CSV
+                        <input type="file" className="hidden" accept=".csv" onChange={handleFileUpload} />
                     </label>
                 </div>
             </header>
@@ -327,7 +336,7 @@ export default function Dashboard() {
                 />
                 <StatCard
                     title="Linked Revenue Risk"
-                    value={`$${kpiStats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                    value={`$${kpiStats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} `}
                     icon={DollarSign}
                     subValue="Annual Subscription Value"
                 />
@@ -364,7 +373,7 @@ export default function Dashboard() {
                                     >
                                         <option value="All">All Suppliers ({uniqueSuppliers.length})</option>
                                         {uniqueSuppliers.map((s, i) => (
-                                            <option key={`${s}-${i}`} value={s}>{s}</option>
+                                            <option key={`${s} -${i} `} value={s}>{s}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -379,7 +388,7 @@ export default function Dashboard() {
                                     <div className="flex flex-col gap-2">
                                         <button
                                             onClick={() => { setViewLevel('root'); setSelectedLabel(null); setSelectedSubLabel(null); }}
-                                            className={`text-left px-3 py-2.5 rounded-lg text-sm transition ${viewLevel === 'root' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            className={`text - left px - 3 py - 2.5 rounded - lg text - sm transition ${viewLevel === 'root' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'} `}
                                         >
                                             All Categories
                                         </button>
@@ -387,7 +396,7 @@ export default function Dashboard() {
                                         {selectedLabel && (
                                             <button
                                                 onClick={() => { setViewLevel('label'); setSelectedSubLabel(null); }}
-                                                className={`text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 transition ${viewLevel === 'label' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                className={`text - left px - 3 py - 2.5 rounded - lg text - sm flex items - center gap - 2 transition ${viewLevel === 'label' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'} `}
                                             >
                                                 <ChevronRight size={14} />
                                                 {selectedLabel}
@@ -472,7 +481,7 @@ export default function Dashboard() {
                                         />
                                         <Bar dataKey="count" radius={[0, 4, 4, 0]} onClick={handleBarClick} cursor="pointer">
                                             {chartData.map((_entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                <Cell key={`cell - ${index} `} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Bar>
                                     </BarChart>
