@@ -1,42 +1,43 @@
 import { useState } from 'react';
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
-import { Lock, AlertCircle } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
+import { Lock, AlertCircle, ArrowRight } from 'lucide-react';
 
 interface LoginScreenProps {
-    onLogin: (email: string) => void;
-}
-
-interface JwtPayload {
-    email: string;
-    name: string;
-    picture: string;
+    onLogin: (email: string, token: string) => void;
 }
 
 const LoginScreen = ({ onLogin }: LoginScreenProps) => {
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSuccess = (credentialResponse: CredentialResponse) => {
-        try {
-            if (credentialResponse.credential) {
-                const decoded = jwtDecode<JwtPayload>(credentialResponse.credential);
-                const email = decoded.email;
+    const login = useGoogleLogin({
+        scope: 'https://www.googleapis.com/auth/spreadsheets',
+        onSuccess: async (tokenResponse) => {
+            setIsLoading(true);
+            try {
+                // Fetch user info to verify email domain
+                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+                const userInfo = await userInfoResponse.json();
 
-                if (email && email.toLowerCase().endsWith('@fresho.com')) {
-                    onLogin(email);
+                if (userInfo.email && userInfo.email.toLowerCase().endsWith('@fresho.com')) {
+                    onLogin(userInfo.email, tokenResponse.access_token);
                 } else {
                     setError('Access denied. Please use your @fresho.com email address.');
+                    setIsLoading(false);
                 }
+            } catch (err) {
+                console.error('User info fetch error:', err);
+                setError('Failed to verify identity. Please try again.');
+                setIsLoading(false);
             }
-        } catch (err) {
-            setError('Login failed. Please try again.');
-            console.error('Login error:', err);
+        },
+        onError: () => {
+            setError('Google Sign-In was unsuccessful.');
+            setIsLoading(false);
         }
-    };
-
-    const handleError = () => {
-        setError('Google Sign-In was unsuccessful. Please try again.');
-    };
+    });
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4">
@@ -50,14 +51,15 @@ const LoginScreen = ({ onLogin }: LoginScreenProps) => {
                 </div>
 
                 <div className="flex justify-center mb-6">
-                    <GoogleLogin
-                        onSuccess={handleSuccess}
-                        onError={handleError}
-                        theme="filled_blue"
-                        size="large"
-                        shape="pill"
-                        width="300"
-                    />
+                    <button
+                        onClick={() => login()}
+                        disabled={isLoading}
+                        className="flex items-center gap-3 bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 font-semibold py-3 px-6 rounded-full transition-all shadow-sm hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed text-lg"
+                    >
+                        <img src="https://www.google.com/favicon.ico" alt="Google" className="w-6 h-6" />
+                        {isLoading ? 'Verifying...' : 'Sign in with Google'}
+                        {!isLoading && <ArrowRight size={20} className="text-indigo-500" />}
+                    </button>
                 </div>
 
                 {error && (
