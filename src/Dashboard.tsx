@@ -92,13 +92,21 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                     console.error("Failed to load sheet data:", err);
                     addLog(`Error loading data: ${err.message}`);
                     setShowDebug(true); // Auto-open on error
+
+                    // Auto-logout on 401 (Token Expired)
+                    if (err.message.includes('401') || err.message.toLowerCase().includes('unauthenticated')) {
+                        addLog("Session expired. Logging out in 3 seconds...");
+                        setTimeout(() => {
+                            if (onLogout) onLogout();
+                        }, 3000);
+                    }
                 }
             } else {
                 addLog("Waiting for Google Login...");
             }
         };
         loadData();
-    }, [accessToken]);
+    }, [accessToken, onLogout]);
 
     // Navigation State
     // activeTab controls the high-level view: 'themes' (default labels) or 'suppliers' (list of suppliers)
@@ -343,34 +351,56 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
 
     // Timeline Data (Dynamic Grouping)
     const timelineData = useMemo(() => {
-        const counts: Record<string, number> = {};
+        const counts: Record<string, { count: number, sortKey: string, label: string }> = {};
 
         filteredData.forEach(item => {
             if (!item.Date) return;
-            // Parse Date
+            // Parse Date: "YYYY-MM-DD"
             const [y, m, d] = item.Date.split('-').map(Number);
+            if (!y || !m || !d) return;
+
             const dateObj = new Date(y, m - 1, d);
 
-            let key = item.Date; // Default 'day'
+            let sortKey = "";
+            let label = "";
+            let groupKey = "";
 
-            if (timeGrouping === 'month') {
-                key = item.Date.substring(0, 7); // YYYY-MM
-            } else if (timeGrouping === 'quarter') {
-                key = getQuarter(dateObj); // Qx YY
-            } else if (timeGrouping === 'week') {
-                key = getWeek(dateObj); // Wx YY
+            if (timeGrouping === 'day') {
+                sortKey = item.Date; // "2024-01-01"
+                label = `${d} ${dateObj.toLocaleString('default', { month: 'short' })}`; // "1 Jan"
+                groupKey = sortKey;
+            }
+            else if (timeGrouping === 'week') {
+                const weekNum = getWeek(dateObj); // "W1 24"
+                // Sort by Year-Week: "2024-01"
+                // Rough approx for sorting:
+                const weekIdx = Math.ceil((dateObj.getTime() - new Date(y, 0, 1).getTime()) / 604800000);
+                sortKey = `${y}-${weekIdx.toString().padStart(2, '0')}`;
+                label = weekNum;
+                groupKey = sortKey;
+            }
+            else if (timeGrouping === 'month') {
+                sortKey = `${y}-${m.toString().padStart(2, '0')}`; // "2024-01"
+                label = dateObj.toLocaleString('default', { month: 'short', year: '2-digit' }); // "Jan 24"
+                groupKey = sortKey;
+            }
+            else if (timeGrouping === 'quarter') {
+                const q = Math.ceil(m / 3);
+                sortKey = `${y}-Q${q}`; // "2024-Q1"
+                label = `Q${q} '${y.toString().slice(2)}`; // "Q1 '24"
+                groupKey = sortKey;
             }
 
-            counts[key] = (counts[key] || 0) + 1;
+            if (!counts[groupKey]) {
+                counts[groupKey] = { count: 0, sortKey, label };
+            }
+            counts[groupKey].count++;
         });
 
-        return Object.entries(counts)
-            .map(([date, count]) => ({ date, count }))
-            .sort((a, b) => {
-                // Sorting depends on format
-                if (timeGrouping === 'quarter' || timeGrouping === 'week') return a.date.localeCompare(b.date);
-                return a.date.localeCompare(b.date);
-            });
+        // Convert to array and sort by sortKey (chronological)
+        return Object.values(counts)
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(item => ({ date: item.label, count: item.count }));
     }, [filteredData, timeGrouping]);
 
     const uniqueSuppliers = useMemo(() => {
