@@ -689,5 +689,8 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                 </div>
             </div>
         </div>
+        </div >
+    );
+}
     );
 }
