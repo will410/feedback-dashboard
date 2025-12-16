@@ -18,7 +18,7 @@ export const fetchSheetData = async (accessToken: string): Promise<FeedbackItem[
     if (!SHEET_ID) throw new Error("Missing Sheet ID");
 
     const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Sheet1!A:H`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Sheet1!A:Z`,
         {
             headers: { Authorization: `Bearer ${accessToken}` },
         }
@@ -33,17 +33,39 @@ export const fetchSheetData = async (accessToken: string): Promise<FeedbackItem[
 
     if (!rows || rows.length < 2) return []; // No data or just headers
 
+    // Robust Header Mapping
+    const headers = rows[0].map((h: string) => h.toLowerCase().trim());
+
+    // Helper to find column index with flexible matching
+    const getIdx = (keys: string[]) => {
+        const idx = headers.findIndex((h: string) => keys.some(k => h.includes(k.toLowerCase())));
+        return idx;
+    };
+
+    const idxDate = getIdx(["Date"]);
+    const idxSupplier = getIdx(["Supplier", "Company"]);
+    const idxLabel = getIdx(["Label", "Theme"]);
+    const idxSub = getIdx(["Sub", "Sub-Theme"]);
+    const idxMicro = getIdx(["Micro", "Micro-Theme"]);
+    const idxPrice = getIdx(["Price", "Amount", "Value"]);
+    const idxMsg = getIdx(["Message", "Feedback"]);
+    const idxLink = getIdx(["Link", "URL", "Hyperlink"]);
+
     // Skip header row
-    return rows.slice(1).map((row: string[]) => ({
-        "Date": row[0] || "",
-        "Supplier Name": row[1] || "",
-        "Label": row[2] || "",
-        "Sub Label": row[3] || "",
-        "Micro Label": row[4] || "",
-        "Price": parseFloat(row[5] || "0"),
-        "Message": row[6] || "",
-        link: row[7] || ""
-    }));
+    return rows.slice(1).map((row: string[]) => {
+        const val = (i: number) => (i !== -1 && row[i]) ? row[i] : "";
+
+        return {
+            "Date": val(idxDate),
+            "Supplier Name": val(idxSupplier),
+            "Label": val(idxLabel) || "Uncategorized",
+            "Sub Label": val(idxSub) || "Uncategorized",
+            "Micro Label": val(idxMicro) || "Uncategorized",
+            "Price": parseFloat(val(idxPrice).replace(/[^0-9.-]+/g, "")) || 0,
+            "Message": val(idxMsg),
+            "link": val(idxLink)
+        };
+    });
 };
 
 export const saveSheetData = async (accessToken: string, items: FeedbackItem[]) => {
