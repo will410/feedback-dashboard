@@ -168,7 +168,7 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
 
             const idxDate = getColIdx('Date (UTC)', ['Date', 'Feedback Date']);
             const idxSupplier = getColIdx('Supplier Name (filled)', ['Supplier Name', 'Report Company (matched)']);
-            const idxLabel = getColIdx('Label', ['Theme', 'Category']);
+            const idxLabel = getColIdx('Label', ['Theme']);
             const idxSubLabel = getColIdx('Sub Label', ['Sub-Theme']);
             const idxMicroLabel = getColIdx('Micro Label', ['Micro-Theme']);
             const idxPrice = getColIdx('Subscription Amount (converted) AUD sum (matched)', ['Price', 'Value']);
