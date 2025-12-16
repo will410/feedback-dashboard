@@ -129,14 +129,14 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                 return headers.findIndex(h => lowerNames.includes(h.toLowerCase()));
             };
 
-            const idxDate = getColIdx(['Date', 'Date (UTC)']);
+            const idxDate = getColIdx(['Date (UTC)', 'Date', 'Feedback Date']);
             const idxLink = getColIdx(['Message Link', 'Link', 'URL']);
             // Re-map other indices...
-            const idxSupplier = getColIdx(['Supplier Name', 'Supplier Name (filled)', 'Report Company (matched)', 'Supplier']);
+            const idxSupplier = getColIdx(['Supplier Name (filled)', 'Supplier Name', 'Supplier']);
             const idxLabel = getColIdx(['Label', 'Theme', 'Category']);
             const idxSubLabel = getColIdx(['Sub Label', 'Sub-Theme']);
             const idxMicroLabel = getColIdx(['Micro Label', 'Micro-Theme']);
-            const idxPrice = getColIdx(['Price', 'Subscription Amount (converted) AUD sum (matched)', 'Value']);
+            const idxPrice = getColIdx(['Subscription Amount (converted) AUD sum (matched)', 'Price', 'Value']);
             const idxMessage = getColIdx(['Message', 'Feedback', 'Verbatim']);
 
             // 3. Detect Offset (Pandas Index Column Check)
@@ -151,7 +151,10 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                     const nextVal = firstRow[idxDate + 1]?.replace(/^"|"$/g, '');
                     const nextIsDate = nextVal && (nextVal.includes('202') || nextVal.includes('/')); // Rough heuristics
 
-                    if (isInteger && nextIsDate) {
+                    // Ensure 'Feedback ID' isn't just the first column name, avoiding false positives if headers are correct
+                    // If headers matched 'Feedback ID' at 0 and 'Date' at 1, idxDate would be 1.
+                    // If idxDate is 0 (found 'Date' in col 0) but col 0 is actually an ID integer, then we offset.
+                    if (isInteger && nextIsDate && idxDate === 0) {
                         console.log("Detected Index Column Offset. Shifting +1");
                         offset = 1;
                     }
@@ -191,7 +194,9 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
 
                 // Date parsing fix
                 let rawDate = val(idxDate);
+                // Handle "2025-11-07 16:45:18" (Space separator) AND "2025-11-07T16:45:18" (ISO)
                 if (rawDate.includes('T')) rawDate = rawDate.split('T')[0];
+                if (rawDate.includes(' ')) rawDate = rawDate.split(' ')[0];
 
                 parsedData.push({
                     "Date": rawDate,
