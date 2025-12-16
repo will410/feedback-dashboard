@@ -304,15 +304,18 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
         return [];
     }, [filteredData, viewLevel, activeTab]);
 
+    // Timeline Data (Group by Month)
     const timelineData = useMemo(() => {
         const counts: Record<string, number> = {};
-        filteredData.forEach(d => {
-            if (!d.Date) return;
-            counts[d.Date] = (counts[d.Date] || 0) + 1;
+        filteredData.forEach(item => {
+            if (!item.Date) return;
+            // Extract YYYY-MM
+            const month = item.Date.substring(0, 7);
+            counts[month] = (counts[month] || 0) + 1;
         });
         return Object.entries(counts)
             .map(([date, count]) => ({ date, count }))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            .sort((a, b) => a.date.localeCompare(b.date));
     }, [filteredData]);
 
     const uniqueSuppliers = useMemo(() => {
@@ -656,6 +659,12 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                             tickLine={false}
                                             axisLine={false}
                                             minTickGap={40}
+                                            tickFormatter={(val) => {
+                                                // Format YYYY-MM to "Nov 25"
+                                                const [y, m] = val.split('-');
+                                                const date = new Date(parseInt(y), parseInt(m) - 1);
+                                                return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                                            }}
                                         />
                                         <YAxis
                                             tick={{ fill: '#94a3b8', fontSize: 10 }}
