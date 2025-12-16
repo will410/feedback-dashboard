@@ -66,21 +66,35 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
     const [data, setData] = useState<FeedbackItem[]>(INITIAL_DATA);
     const [filteredData, setFilteredData] = useState<FeedbackItem[]>(INITIAL_DATA);
     const [isDemoMode, setIsDemoMode] = useState(true);
+    const [showDebug, setShowDebug] = useState(false);
+    const [logs, setLogs] = useState<string[]>([]);
+
+    const addLog = (msg: string) => {
+        setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
+    };
 
     // Initial Load from Sheets
     useEffect(() => {
         const loadData = async () => {
             if (accessToken) {
+                addLog(`Attempting to load data... Token: ${accessToken.slice(0, 10)}...`);
                 try {
-                    const sheetData = await fetchSheetData(accessToken);
+                    const sheetData = await fetchSheetData(accessToken, addLog);
                     if (sheetData.length > 0) {
                         setData(sheetData);
                         setFilteredData(sheetData);
                         setIsDemoMode(false);
+                        addLog(`Loaded ${sheetData.length} items from Sheets.`);
+                    } else {
+                        addLog("Warning: No data returned from Sheets.");
                     }
-                } catch (err) {
+                } catch (err: any) {
                     console.error("Failed to load sheet data:", err);
+                    addLog(`Error loading data: ${err.message}`);
+                    setShowDebug(true); // Auto-open on error
                 }
+            } else {
+                addLog("Waiting for Google Login...");
             }
         };
         loadData();
@@ -439,8 +453,35 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                         Load Full CSV
                         <input type="file" className="hidden" accept=".csv" onChange={handleFileUpload} />
                     </label>
+                    <button
+                        onClick={() => setShowDebug(!showDebug)}
+                        className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                        title="Toggle Debug Log"
+                    >
+                        <AlertCircle size={18} />
+                    </button>
                 </div>
             </header>
+
+            {/* Debug Panel */}
+            {showDebug && (
+                <Card className="mb-6 p-4 bg-slate-900 border-slate-800 text-slate-300 font-mono text-xs">
+                    <div className="flex justify-between items-center mb-3 border-b border-slate-700 pb-2">
+                        <span className="font-bold text-white">Debug Log (Sheets Connection)</span>
+                        <div className="flex gap-2">
+                            <button onClick={() => setLogs([])} className="hover:text-white">Clear</button>
+                            <button onClick={() => navigator.clipboard.writeText(logs.join('\n'))} className="hover:text-white">Copy</button>
+                            <button onClick={() => setShowDebug(false)} className="hover:text-white">Close</button>
+                        </div>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                        {logs.length === 0 && <span className="opacity-50">No logs yet...</span>}
+                        {logs.map((log, i) => (
+                            <div key={i} className="break-words">{log}</div>
+                        ))}
+                    </div>
+                </Card>
+            )}
 
             {/* Demo Warning */}
             {isDemoMode && (
