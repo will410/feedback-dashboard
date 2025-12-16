@@ -91,10 +91,11 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
     const [activeTab, setActiveTab] = useState<'themes' | 'suppliers'>('themes');
 
     // Drill down levels for Themes
-    const [viewLevel, setViewLevel] = useState<'root' | 'label' | 'sublabel'>('root');
+    const [viewLevel, setViewLevel] = useState<'root' | 'label' | 'sublabel' | 'microlabel'>('root');
 
     const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
     const [selectedSubLabel, setSelectedSubLabel] = useState<string | null>(null);
+    const [selectedMicroLabel, setSelectedMicroLabel] = useState<string | null>(null);
     const [selectedSupplier, setSelectedSupplier] = useState<string>('All');
 
     // Pagination State
@@ -220,6 +221,7 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                 setViewLevel('root');
                 setSelectedLabel(null);
                 setSelectedSubLabel(null);
+                setSelectedMicroLabel(null);
                 setSelectedSupplier('All');
                 setCurrentPage(1);
             }
@@ -245,6 +247,12 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                     item.Label === selectedLabel &&
                     item["Sub Label"] === selectedSubLabel
                 );
+            } else if (viewLevel === 'microlabel' && selectedLabel && selectedSubLabel && selectedMicroLabel) {
+                res = res.filter(item =>
+                    item.Label === selectedLabel &&
+                    item["Sub Label"] === selectedSubLabel &&
+                    item["Micro Label"] === selectedMicroLabel
+                );
             }
         }
 
@@ -258,7 +266,7 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
 
         setFilteredData(res);
         setCurrentPage(1);
-    }, [data, selectedSupplier, viewLevel, selectedLabel, selectedSubLabel, activeTab, dateRange]);
+    }, [data, selectedSupplier, viewLevel, selectedLabel, selectedSubLabel, selectedMicroLabel, activeTab, dateRange]);
 
     // --- Aggregations ---
 
@@ -299,6 +307,16 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
             const counts: Record<string, number> = {};
             filteredData.forEach(d => {
                 counts[d["Sub Label"]] = (counts[d["Sub Label"]] || 0) + 1;
+            });
+            return Object.entries(counts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 10);
+        }
+        else if (viewLevel === 'sublabel') {
+            const counts: Record<string, number> = {};
+            filteredData.forEach(d => {
+                counts[d["Micro Label"]] = (counts[d["Micro Label"]] || 0) + 1;
             });
             return Object.entries(counts)
                 .map(([name, count]) => ({ name, count }))
@@ -368,12 +386,18 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
             } else if (viewLevel === 'label') {
                 setSelectedSubLabel(entry.name);
                 setViewLevel('sublabel');
+            } else if (viewLevel === 'sublabel') {
+                setSelectedMicroLabel(entry.name);
+                setViewLevel('microlabel');
             }
         }
     };
 
     const handleBack = () => {
-        if (viewLevel === 'sublabel') {
+        if (viewLevel === 'microlabel') {
+            setSelectedMicroLabel(null);
+            setViewLevel('sublabel');
+        } else if (viewLevel === 'sublabel') {
             setSelectedSubLabel(null);
             setViewLevel('label');
         } else if (viewLevel === 'label') {
@@ -486,16 +510,16 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                     </label>
                                     <div className="flex flex-col gap-2">
                                         <button
-                                            onClick={() => { setViewLevel('root'); setSelectedLabel(null); setSelectedSubLabel(null); }}
-                                            className={`text - left px - 3 py - 2.5 rounded - lg text - sm transition ${viewLevel === 'root' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'} `}
+                                            onClick={() => { setViewLevel('root'); setSelectedLabel(null); setSelectedSubLabel(null); setSelectedMicroLabel(null); }}
+                                            className={`text-left px-3 py-2.5 rounded-lg text-sm transition ${viewLevel === 'root' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
                                         >
                                             All Categories
                                         </button>
 
                                         {selectedLabel && (
                                             <button
-                                                onClick={() => { setViewLevel('label'); setSelectedSubLabel(null); }}
-                                                className={`text - left px - 3 py - 2.5 rounded - lg text - sm flex items - center gap - 2 transition ${viewLevel === 'label' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'} `}
+                                                onClick={() => { setViewLevel('label'); setSelectedSubLabel(null); setSelectedMicroLabel(null); }}
+                                                className={`text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 transition ${viewLevel === 'label' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
                                             >
                                                 <ChevronRight size={14} />
                                                 {selectedLabel}
@@ -503,9 +527,19 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                         )}
 
                                         {selectedSubLabel && (
-                                            <div className="text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 font-medium">
+                                            <button
+                                                onClick={() => { setViewLevel('sublabel'); setSelectedMicroLabel(null); }}
+                                                className={`text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 transition ${viewLevel === 'sublabel' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >
                                                 <ChevronRight size={14} />
                                                 {selectedSubLabel}
+                                            </button>
+                                        )}
+
+                                        {selectedMicroLabel && (
+                                            <div className="text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 font-medium">
+                                                <ChevronRight size={14} />
+                                                {selectedMicroLabel}
                                             </div>
                                         )}
                                     </div>
@@ -532,8 +566,8 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                             key={g}
                                             onClick={() => setTimeGrouping(g)}
                                             className={`text-xs font-medium py-1.5 rounded-md transition-all ${timeGrouping === g
-                                                    ? 'bg-white text-indigo-600 shadow-sm'
-                                                    : 'text-slate-500 hover:text-slate-700'
+                                                ? 'bg-white text-indigo-600 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-700'
                                                 }`}
                                         >
                                             {g.charAt(0).toUpperCase() + g.slice(1)}
@@ -602,6 +636,7 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                         {activeTab === 'themes' && viewLevel === 'root' && "Top Themes"}
                                         {activeTab === 'themes' && viewLevel === 'label' && selectedLabel}
                                         {activeTab === 'themes' && viewLevel === 'sublabel' && selectedSubLabel}
+                                        {activeTab === 'themes' && viewLevel === 'microlabel' && selectedMicroLabel}
                                     </h2>
                                     <p className="text-xs text-slate-500 font-medium mt-0.5">
                                         {activeTab === 'suppliers' ? "By Volume" : "By Feedback Count"}
@@ -609,7 +644,7 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                 </div>
                             </div>
 
-                            {viewLevel !== 'sublabel' && (
+                            {viewLevel !== 'microlabel' && (
                                 <div className="flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-md font-medium">
                                     <LayoutDashboard size={14} />
                                     {activeTab === 'suppliers' ? "Select a supplier" : "Click bar to drill down"}
@@ -617,7 +652,7 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                             )}
                         </div>
 
-                        {viewLevel !== 'sublabel' ? (
+                        {viewLevel !== 'microlabel' ? (
                             <div className="h-[400px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
