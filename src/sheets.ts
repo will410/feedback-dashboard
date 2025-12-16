@@ -9,15 +9,16 @@ export type FeedbackItem = {
     "Micro Label": string;
     Price: number;
     Message: string;
+    link?: string;
 };
 
-const HEADERS = ["Date", "Supplier Name", "Label", "Sub Label", "Micro Label", "Price", "Message"];
+const HEADERS = ["Date", "Supplier Name", "Label", "Sub Label", "Micro Label", "Price", "Message", "Link"];
 
 export const fetchSheetData = async (accessToken: string): Promise<FeedbackItem[]> => {
     if (!SHEET_ID) throw new Error("Missing Sheet ID");
 
     const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Sheet1!A:G`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Sheet1!A:H`,
         {
             headers: { Authorization: `Bearer ${accessToken}` },
         }
@@ -40,7 +41,8 @@ export const fetchSheetData = async (accessToken: string): Promise<FeedbackItem[
         "Sub Label": row[3] || "",
         "Micro Label": row[4] || "",
         "Price": parseFloat(row[5] || "0"),
-        "Message": row[6] || ""
+        "Message": row[6] || "",
+        link: row[7] || ""
     }));
 };
 
@@ -57,7 +59,8 @@ export const saveSheetData = async (accessToken: string, items: FeedbackItem[]) 
             item["Sub Label"],
             item["Micro Label"],
             item.Price.toString(),
-            item.Message
+            item.Message,
+            item.link || ""
         ])
     ];
 

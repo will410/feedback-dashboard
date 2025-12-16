@@ -6,7 +6,7 @@ import {
 import {
     ArrowLeft, Filter, DollarSign, MessageSquare,
     Users, ChevronRight, Calendar, LayoutDashboard,
-    ChevronLeft, AlertCircle, LogOut, Download
+    ChevronLeft, AlertCircle, LogOut, Download, ExternalLink
 } from 'lucide-react';
 
 // --- Types ---
@@ -18,16 +18,17 @@ type FeedbackItem = {
     "Micro Label": string;
     Price: number;
     Message: string;
+    link?: string;
 };
 
 // --- Embedded Initial Data (Top 150 Recent Items) ---
 const INITIAL_DATA: FeedbackItem[] = [
-    { "Date": "2025-11-07", "Supplier Name": "Longman's Cheese", "Label": "Picking & Warehouse", "Sub Label": "Picking Slips", "Micro Label": "Customer code", "Price": 0.0, "Message": "They are really keen to have the customer codes added to the invoices, so when a customer rings them for a query they can ask for the code to locate the account and save any potential issues." },
-    { "Date": "2025-11-07", "Supplier Name": "First Choice", "Label": "Uncategorized", "Sub Label": "Uncategorized", "Micro Label": "Uncategorized", "Price": 0.0, "Message": "Supplier: First Choice\nType: Goods In Process\nPriority: Medium\nComment:" },
-    { "Date": "2025-11-07", "Supplier Name": "Imran Brothers", "Label": "Pricing", "Sub Label": "Price History", "Micro Label": "Per_customer history", "Price": 0.0, "Message": "Would like to see 'sold price' history per product per customer on the order entry page - last sold price and date last purchased. Saw something similar to this on Sage and believes it would support their telesales team whilst taking and confirming orders." },
-    { "Date": "2025-11-06", "Supplier Name": "Parisi", "Label": "Logistics (Delivery & Runs)", "Sub Label": "Delivery Runs", "Micro Label": "Multiple runs per customer", "Price": 2590.0, "Message": "Parisi needs to have multiple log ins for each venue departments - for eg. Rockpool need to have a Parisi log in for Bar, Juice and F+V." },
-    { "Date": "2025-11-06", "Supplier Name": "Box Fresh", "Label": "Buying (Procurement)", "Sub Label": "Purchase Orders", "Micro Label": "Partial orders", "Price": 0.0, "Message": "Box Fresh essentially have two groups of products, 'Rebel Group Products' and 'Non Rebel Group Products'." },
-    { "Date": "2025-11-06", "Supplier Name": "Sher Wagyu", "Label": "Picking & Warehouse", "Sub Label": "Picking Slips", "Micro Label": "Customer code", "Price": 0.0, "Message": "Would like the Product Code visible when picking as per the screenshot below" }
+    { "Date": "2025-11-07", "Supplier Name": "Longman's Cheese", "Label": "Picking & Warehouse", "Sub Label": "Picking Slips", "Micro Label": "Customer code", "Price": 0.0, "Message": "They are really keen to have the customer codes added to the invoices, so when a customer rings them for a query they can ask for the code to locate the account and save any potential issues.", link: "" },
+    { "Date": "2025-11-07", "Supplier Name": "First Choice", "Label": "Uncategorized", "Sub Label": "Uncategorized", "Micro Label": "Uncategorized", "Price": 0.0, "Message": "Supplier: First Choice\nType: Goods In Process\nPriority: Medium\nComment:", link: "" },
+    { "Date": "2025-11-07", "Supplier Name": "Imran Brothers", "Label": "Pricing", "Sub Label": "Price History", "Micro Label": "Per_customer history", "Price": 0.0, "Message": "Would like to see 'sold price' history per product per customer on the order entry page - last sold price and date last purchased. Saw something similar to this on Sage and believes it would support their telesales team whilst taking and confirming orders.", link: "" },
+    { "Date": "2025-11-06", "Supplier Name": "Parisi", "Label": "Logistics (Delivery & Runs)", "Sub Label": "Delivery Runs", "Micro Label": "Multiple runs per customer", "Price": 2590.0, "Message": "Parisi needs to have multiple log ins for each venue departments - for eg. Rockpool need to have a Parisi log in for Bar, Juice and F+V.", link: "" },
+    { "Date": "2025-11-06", "Supplier Name": "Box Fresh", "Label": "Buying (Procurement)", "Sub Label": "Purchase Orders", "Micro Label": "Partial orders", "Price": 0.0, "Message": "Box Fresh essentially have two groups of products, 'Rebel Group Products' and 'Non Rebel Group Products'.", link: "" },
+    { "Date": "2025-11-06", "Supplier Name": "Sher Wagyu", "Label": "Picking & Warehouse", "Sub Label": "Picking Slips", "Micro Label": "Customer code", "Price": 0.0, "Message": "Would like the Product Code visible when picking as per the screenshot below", link: "" }
 ];
 
 
@@ -110,20 +111,27 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
             const text = e.target?.result as string;
             if (!text) return;
 
-            const lines = text.split('\n');
+            const lines = text.split('\n').filter(l => l.trim().length > 0);
             if (lines.length < 2) return;
 
-            // Parse Headers
+            // 1. Detect Delimiter
             const headerLine = lines[0];
-            const headers = headerLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const commaCount = (headerLine.match(/,/g) || []).length;
+            const tabCount = (headerLine.match(/\t/g) || []).length;
+            const delimiter = tabCount > commaCount ? '\t' : ',';
 
-            // Helper to find column index by name (case-insensitive, flexible)
+            // 2. Parse Headers
+            const headers = headerLine.split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+
+            // Helper to find column index
             const getColIdx = (possibleNames: string[]) => {
                 const lowerNames = possibleNames.map(n => n.toLowerCase());
                 return headers.findIndex(h => lowerNames.includes(h.toLowerCase()));
             };
 
             const idxDate = getColIdx(['Date', 'Date (UTC)']);
+            const idxLink = getColIdx(['Message Link', 'Link', 'URL']);
+            // Re-map other indices...
             const idxSupplier = getColIdx(['Supplier Name', 'Supplier Name (filled)', 'Report Company (matched)', 'Supplier']);
             const idxLabel = getColIdx(['Label', 'Theme', 'Category']);
             const idxSubLabel = getColIdx(['Sub Label', 'Sub-Theme']);
@@ -131,23 +139,38 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
             const idxPrice = getColIdx(['Price', 'Subscription Amount (converted) AUD sum (matched)', 'Value']);
             const idxMessage = getColIdx(['Message', 'Feedback', 'Verbatim']);
 
+            // 3. Detect Offset (Pandas Index Column Check)
+            // Check the first data row. If idxDate points to a number (like '1') and idxDate+1 points to a date, we have an offset.
+            let offset = 0;
+            if (lines.length > 1) {
+                const firstRow = lines[1].split(delimiter); // Simple split for check
+                if (idxDate !== -1 && firstRow[idxDate]) {
+                    const valAtPath = firstRow[idxDate].replace(/^"|"$/g, '');
+                    // If header says Date, but value is clean integer (Index) AND next col looks like Date
+                    const isInteger = /^\d+$/.test(valAtPath);
+                    const nextVal = firstRow[idxDate + 1]?.replace(/^"|"$/g, '');
+                    const nextIsDate = nextVal && (nextVal.includes('202') || nextVal.includes('/')); // Rough heuristics
+
+                    if (isInteger && nextIsDate) {
+                        console.log("Detected Index Column Offset. Shifting +1");
+                        offset = 1;
+                    }
+                }
+            }
+
             const parsedData: FeedbackItem[] = [];
 
-            const parseCSVLine = (str: string) => {
+            // Use the previous simple parser but with dynamic delimiter
+            const parseLineParams = (str: string) => {
                 const result = [];
                 let cell = '';
                 let inQuote = false;
-
                 for (let i = 0; i < str.length; i++) {
                     const char = str[i];
-                    if (char === '"') {
-                        inQuote = !inQuote;
-                    } else if (char === ',' && !inQuote) {
-                        result.push(cell);
-                        cell = '';
-                    } else {
-                        cell += char;
-                    }
+                    if (char === '"') inQuote = !inQuote;
+                    else if (char === delimiter && !inQuote) {
+                        result.push(cell); cell = '';
+                    } else cell += char;
                 }
                 result.push(cell);
                 return result.map(c => c.replace(/^"|"$/g, '').trim());
@@ -157,10 +180,14 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                 const line = lines[i].trim();
                 if (!line) continue;
 
-                const cols = parseCSVLine(line);
+                const cols = parseLineParams(line);
 
-                // Helper to safely get value at index
-                const val = (idx: number) => (idx !== -1 && cols[idx]) ? cols[idx] : "";
+                // Helper to safely get value at index WITH OFFSET
+                const val = (idx: number) => {
+                    if (idx === -1) return "";
+                    const realIdx = idx + offset;
+                    return (cols[realIdx]) ? cols[realIdx] : "";
+                };
 
                 // Date parsing fix
                 let rawDate = val(idxDate);
@@ -172,8 +199,9 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                     "Label": val(idxLabel) || "Uncategorized",
                     "Sub Label": val(idxSubLabel) || "Uncategorized",
                     "Micro Label": val(idxMicroLabel) || "Uncategorized",
-                    "Price": parseFloat(val(idxPrice) || "0"),
-                    "Message": val(idxMessage) || ""
+                    "Price": parseFloat(val(idxPrice) || "0") || 0,
+                    "Message": val(idxMessage) || "",
+                    link: val(idxLink) || ""
                 });
             }
 
@@ -540,94 +568,115 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
                                     {paginatedData.map((item, idx) => (
                                         <div key={idx} className="p-4 border border-slate-100 rounded-lg bg-slate-50 hover:bg-white hover:shadow-sm transition group">
                                             <div className="flex justify-between items-start mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-slate-700 text-sm">{item["Supplier Name"]}</span>
-                                                    {item.Price > 0 && (
-                                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium flex items-center">
-                                                            <DollarSign size={10} /> Value
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between gap-4 mb-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-sm font-semibold text-slate-900 truncate">
+                                                                {item["Supplier Name"]}
+                                                            </h4>
+                                                            <span className="text-xs text-slate-400">{item.Date}</span>
+                                                            {item.link && (
+                                                                <a
+                                                                    href={item.link}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-indigo-600 hover:text-indigo-800 p-1 hover:bg-indigo-50 rounded-full transition-colors"
+                                                                    title="Open in Slack"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <ExternalLink size={14} />
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                        {item.Price > 0 && (
+                                                            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full whitespace-nowrap">
+                                                                ${item.Price.toLocaleString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full font-medium">
+                                                            {item.Label}
                                                         </span>
-                                                    )}
+                                                        <span className="text-slate-300">•</span>
+                                                        <span className="text-xs text-slate-500">{item["Sub Label"]}</span>
+                                                    </div>
+                                                    <p className="text-sm text-slate-600 line-clamp-2">
+                                                        {item.Message}
+                                                    </p>
                                                 </div>
-                                                <span className="text-xs text-slate-400">{item.Date}</span>
                                             </div>
-                                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{item.Message}</p>
-                                            <div className="mt-3 pt-2 border-t border-slate-200/50 flex gap-2">
-                                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium bg-slate-100 px-2 py-1 rounded">
-                                                    {item["Micro Label"]}
-                                                </span>
-                                            </div>
-                                        </div>
                                     ))}
-                                    {paginatedData.length === 0 && (
-                                        <div className="text-center py-12 text-slate-400">
-                                            No feedback items found for this selection.
+                                            {paginatedData.length === 0 && (
+                                                <div className="text-center py-12 text-slate-400">
+                                                    No feedback items found for this selection.
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* Pagination Controls */}
-                                {totalPages > 1 && (
-                                    <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
-                                        <button
-                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                            disabled={currentPage === 1}
-                                            className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
-                                        >
-                                            <ChevronLeft size={20} />
-                                        </button>
-                                        <span className="text-xs font-medium text-slate-500">
-                                            Page {currentPage} of {totalPages}
-                                        </span>
-                                        <button
-                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                            disabled={currentPage === totalPages}
-                                            className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
-                                        >
-                                            <ChevronRight size={20} />
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                {/* Pagination Controls */ }
+                                { totalPages > 1 && (
+                                            <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
+                                                <button
+                                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                    disabled={currentPage === 1}
+                                                    className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+                                                >
+                                                    <ChevronLeft size={20} />
+                                                </button>
+                                                <span className="text-xs font-medium text-slate-500">
+                                                    Page {currentPage} of {totalPages}
+                                                </span>
+                                                <button
+                                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                    disabled={currentPage === totalPages}
+                                                    className="p-2 text-slate-500 hover:bg-slate-100 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+                                                >
+                                                    <ChevronRight size={20} />
+                                                </button>
+                                            </div>
+                                        )}
+                                </div>
                         )}
-                    </Card>
+                            </Card>
 
                     {/* Timeline Chart */}
-                    <Card className="p-6">
-                        <div className="flex items-center gap-2 mb-6">
-                            <Calendar size={18} className="text-slate-400" />
-                            <h2 className="text-lg font-bold text-slate-900">Volume Over Time</h2>
-                        </div>
-                        <div className="h-[250px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={timelineData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                    <XAxis
-                                        dataKey="date"
-                                        tick={{ fill: '#94a3b8', fontSize: 10 }}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        minTickGap={40}
-                                    />
-                                    <YAxis
-                                        tick={{ fill: '#94a3b8', fontSize: 10 }}
-                                        tickLine={false}
-                                        axisLine={false}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="count"
-                                        stroke="#6366f1"
-                                        strokeWidth={3}
-                                        dot={false}
-                                        activeDot={{ r: 6 }}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </Card>
+                        <Card className="p-6">
+                            <div className="flex items-center gap-2 mb-6">
+                                <Calendar size={18} className="text-slate-400" />
+                                <h2 className="text-lg font-bold text-slate-900">Volume Over Time</h2>
+                            </div>
+                            <div className="h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={timelineData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                        <XAxis
+                                            dataKey="date"
+                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            minTickGap={40}
+                                        />
+                                        <YAxis
+                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="count"
+                                            stroke="#6366f1"
+                                            strokeWidth={3}
+                                            dot={false}
+                                            activeDot={{ r: 6 }}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
                 </div>
             </div>
         </div>
