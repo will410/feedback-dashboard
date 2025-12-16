@@ -138,8 +138,24 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
             const tabCount = (headerLine.match(/\t/g) || []).length;
             const delimiter = tabCount > commaCount ? '\t' : ',';
 
-            // 2. Parse Headers
-            const headers = headerLine.split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+            // --- MOVED UP: Define Parser First so Headers can use it ---
+            const parseLineParams = (str: string) => {
+                const result = [];
+                let cell = '';
+                let inQuote = false;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str[i];
+                    if (char === '"') inQuote = !inQuote;
+                    else if (char === delimiter && !inQuote) {
+                        result.push(cell); cell = '';
+                    } else cell += char;
+                }
+                result.push(cell);
+                return result.map(c => c.replace(/^"|"$/g, '').trim());
+            };
+
+            // 2. Parse Headers (FIXED: Using the robust parser instead of .split)
+            const headers = parseLineParams(headerLine);
             console.log("Detected Headers:", headers);
 
             // Helper to find column index with strict matching first
@@ -161,26 +177,11 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
 
             const parsedData: FeedbackItem[] = [];
 
-            // Simple CSV Tokenizer that handles quotes
-            const parseLineParams = (str: string) => {
-                const result = [];
-                let cell = '';
-                let inQuote = false;
-                for (let i = 0; i < str.length; i++) {
-                    const char = str[i];
-                    if (char === '"') inQuote = !inQuote;
-                    else if (char === delimiter && !inQuote) {
-                        result.push(cell); cell = '';
-                    } else cell += char;
-                }
-                result.push(cell);
-                return result.map(c => c.replace(/^"|"$/g, '').trim());
-            };
-
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
 
+                // Use the same parser for data
                 const cols = parseLineParams(line);
                 const val = (idx: number) => (idx !== -1 && cols[idx]) ? cols[idx] : "";
 
