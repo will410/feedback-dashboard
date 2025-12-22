@@ -65,14 +65,14 @@ export const fetchSheetData = async (accessToken: string, log?: (msg: string) =>
             return idx;
         };
 
-        const idxDate = getIdx(["Date"]);
-        const idxSupplier = getIdx(["Supplier", "Company"]);
-        const idxLabel = getIdx(["Label", "Theme"]);
-        const idxSub = getIdx(["Sub", "Sub-Theme"]);
-        const idxMicro = getIdx(["Micro", "Micro-Theme"]);
-        const idxPrice = getIdx(["Price", "Amount", "Value"]);
-        const idxMsg = getIdx(["Message", "Feedback"]);
-        const idxLink = getIdx(["Link", "URL", "Hyperlink"]);
+        const idxDate = getIdx(["date (utc)", "date", "feedback date"]);
+        const idxSupplier = getIdx(["supplier name", "company"]);
+        const idxLabel = getIdx(["label", "theme"]);
+        const idxSub = getIdx(["sub label", "sub-label", "sub-theme"]);
+        const idxMicro = getIdx(["micro label", "micro-label", "micro-theme"]);
+        const idxPrice = getIdx(["subscription amount", "price", "amount", "value"]);
+        const idxMsg = getIdx(["message", "feedback"]);
+        const idxLink = getIdx(["message link", "link", "url", "hyperlink"]);
 
         logger(`Mapped Indices - Date:${idxDate}, Supplier:${idxSupplier}, Label:${idxLabel}`);
 
