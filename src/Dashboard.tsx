@@ -128,11 +128,6 @@ export default function Dashboard({ onLogout, accessToken }: DashboardProps) {
     const [timeGrouping, setTimeGrouping] = useState<'day' | 'week' | 'month' | 'quarter'>('month');
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
 
-    // Helper: Get Quarter from Date
-    const getQuarter = (d: Date) => {
-        const q = Math.floor(d.getMonth() / 3) + 1;
-        return `Q${q} ${d.getFullYear().toString().slice(2)}`;
-    };
 
     // Helper: Get Week Number
     const getWeek = (d: Date) => {
